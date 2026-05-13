@@ -257,8 +257,9 @@
             border-bottom: none;
         }
 
-        .rank-num { color: var(--accent-color); font-weight: bold; }
-        .rank-time { color: var(--success-color); }
+        .rank-num { color: var(--accent-color); font-weight: bold; width: 40px; }
+        .rank-name { color: var(--text-color); flex-grow: 1; text-align: left; margin-left: 10px; }
+        .rank-time { color: var(--success-color); width: 80px; text-align: right; }
 
         @media (max-width: 760px) {
             color: var(--success-color);
@@ -747,6 +748,7 @@
                 this.lastUpdate = Date.now();
                 
                 // Game Session State
+                this.playerName = "";
                 this.gameStartTime = 0;
                 this.totalTimeTaken = 0;
                 this.isGameRunning = false;
@@ -785,6 +787,10 @@
             }
 
             startGame() {
+                const name = prompt("이름을 입력하세요:");
+                if (name === null) return; // 취소 버튼 클릭 시
+                
+                this.playerName = name.trim() || "익명";
                 document.getElementById('start-screen').style.display = 'none';
                 this.isGameRunning = true;
                 this.gameStartTime = Date.now();
@@ -814,7 +820,7 @@
                             .map((r, i) => `
                                 <li>
                                     <span class="rank-num">${i + 1}위</span>
-                                    <span class="rank-date">${new Date(r.date).toLocaleDateString()}</span>
+                                    <span class="rank-name">${r.name || "익명"}</span>
                                     <span class="rank-time">${(r.time / 1000).toFixed(2)}s</span>
                                 </li>
                             `).join('');
@@ -822,7 +828,11 @@
 
             saveRanking(time) {
                 const rankings = JSON.parse(localStorage.getItem('snell_rankings') || '[]');
-                rankings.push({ time, date: Date.now() });
+                rankings.push({ 
+                    name: this.playerName,
+                    time, 
+                    date: Date.now() 
+                });
                 localStorage.setItem('snell_rankings', JSON.stringify(rankings));
             }
 
