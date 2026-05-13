@@ -197,7 +197,70 @@
             text-align: center;
         }
 
-        #victory-screen h2 {
+        #start-screen, #ranking-screen {
+            position: absolute;
+            inset: 0;
+            background: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 500;
+            text-align: center;
+        }
+
+        #ranking-screen {
+            display: none;
+        }
+
+        .menu-title {
+            font-size: 3rem;
+            color: var(--accent-color);
+            margin-bottom: 40px;
+            text-shadow: 0 0 20px rgba(88, 166, 255, 0.5);
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .menu-btn {
+            width: 250px;
+            padding: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #ranking-list {
+            width: 80%;
+            max-width: 400px;
+            margin: 20px 0;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            list-style: none;
+        }
+
+        #ranking-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #ranking-list li:last-child {
+            border-bottom: none;
+        }
+
+        .rank-num { color: var(--accent-color); font-weight: bold; }
+        .rank-time { color: var(--success-color); }
+
+        @media (max-width: 760px) {
             color: var(--success-color);
             font-size: 2.5rem;
             margin-bottom: 10px;
@@ -244,6 +307,24 @@
             <h2>스테이지 클리어!</h2>
             <div class="phenomena-list" id="phenomena-list"></div>
             <button id="victory-next-btn" class="primary">다음 스테이지로 →</button>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="start-screen">
+            <h1 class="menu-title">SNELL'S LAW</h1>
+            <div class="menu-buttons">
+                <button id="start-btn" class="menu-btn primary">START</button>
+                <button id="show-ranking-btn" class="menu-btn">RANKING</button>
+            </div>
+        </div>
+
+        <!-- Ranking Screen -->
+        <div id="ranking-screen">
+            <h1 class="menu-title">RANKINGS</h1>
+            <ul id="ranking-list">
+                <!-- Rankings will be populated here -->
+            </ul>
+            <button id="back-to-menu-btn" class="menu-btn">BACK</button>
         </div>
     </div>
 
@@ -660,10 +741,15 @@
                 this.phenomena = new Set();
                 this.raySegments = [];
                 
-                // Solve Timer State
+                // Solve Timer State (Internal to stage)
                 this.solveTimer = 0; // ms
                 this.solveDuration = 3000; // 3 seconds required
                 this.lastUpdate = Date.now();
+                
+                // Game Session State
+                this.gameStartTime = 0;
+                this.totalTimeTaken = 0;
+                this.isGameRunning = false;
                 
                 // Interaction state
                 this.hoveredBlock = null;
@@ -674,7 +760,7 @@
 
                 this.initUI();
                 this.initInput();
-                this.loadStage(0);
+                // We don't load stage 0 yet, we wait for START button
                 this.animate();
             }
 
@@ -682,6 +768,11 @@
                 document.getElementById('reset-btn').onclick = () => this.loadStage(this.currentStageIdx);
                 document.getElementById('next-btn').onclick = () => this.nextStage();
                 document.getElementById('victory-next-btn').onclick = () => this.nextStage();
+                
+                // Start Screen Buttons
+                document.getElementById('start-btn').onclick = () => this.startGame();
+                document.getElementById('show-ranking-btn').onclick = () => this.showRanking();
+                document.getElementById('back-to-menu-btn').onclick = () => this.showStartScreen();
                 
                 const dotsContainer = document.getElementById('progress-dots');
                 dotsContainer.innerHTML = '';
@@ -691,6 +782,48 @@
                     dotsContainer.appendChild(dot);
                 }
                 this.updateProgressDots();
+            }
+
+            startGame() {
+                document.getElementById('start-screen').style.display = 'none';
+                this.isGameRunning = true;
+                this.gameStartTime = Date.now();
+                this.loadStage(0);
+            }
+
+            showRanking() {
+                document.getElementById('start-screen').style.display = 'none';
+                document.getElementById('ranking-screen').style.display = 'flex';
+                this.renderRankings();
+            }
+
+            showStartScreen() {
+                document.getElementById('start-screen').style.display = 'flex';
+                document.getElementById('ranking-screen').style.display = 'none';
+                document.getElementById('victory-screen').style.display = 'none';
+                this.isGameRunning = false;
+            }
+
+            renderRankings() {
+                const list = document.getElementById('ranking-list');
+                const rankings = JSON.parse(localStorage.getItem('snell_rankings') || '[]');
+                
+                list.innerHTML = rankings.length === 0 ? '<li>데이터가 없습니다</li>' : 
+                    rankings.sort((a, b) => a.time - b.time)
+                            .slice(0, 10)
+                            .map((r, i) => `
+                                <li>
+                                    <span class="rank-num">${i + 1}위</span>
+                                    <span class="rank-date">${new Date(r.date).toLocaleDateString()}</span>
+                                    <span class="rank-time">${(r.time / 1000).toFixed(2)}s</span>
+                                </li>
+                            `).join('');
+            }
+
+            saveRanking(time) {
+                const rankings = JSON.parse(localStorage.getItem('snell_rankings') || '[]');
+                rankings.push({ time, date: Date.now() });
+                localStorage.setItem('snell_rankings', JSON.stringify(rankings));
             }
 
             initInput() {
@@ -836,6 +969,11 @@
                         const stageStr = prompt("이동할 스테이지 번호를 입력하세요 (1-10):");
                         const stageNum = parseInt(stageStr);
                         if (!isNaN(stageNum) && stageNum >= 1 && stageNum <= STAGES.length) {
+                            if (!this.isGameRunning) {
+                                this.isGameRunning = true;
+                                this.gameStartTime = Date.now();
+                                document.getElementById('start-screen').style.display = 'none';
+                            }
                             this.loadStage(stageNum - 1);
                         }
                         inputBuffer = "";
@@ -903,10 +1041,17 @@
             nextStage() {
                 if (this.currentStageIdx < STAGES.length - 1) {
                     this.loadStage(this.currentStageIdx + 1);
+                } else {
+                    // Game Finished!
+                    this.totalTimeTaken = Date.now() - this.gameStartTime;
+                    this.saveRanking(this.totalTimeTaken);
+                    this.showRanking();
                 }
             }
 
             update() {
+                if (!this.isGameRunning) return;
+
                 const now = Date.now();
                 const deltaTime = now - this.lastUpdate;
                 this.lastUpdate = now;
@@ -977,6 +1122,14 @@
             onWin() {
                 this.isSolved = true;
                 document.getElementById('next-btn').disabled = false;
+                
+                // If it's the last stage, change the button text
+                if (this.currentStageIdx === STAGES.length - 1) {
+                    document.getElementById('victory-next-btn').textContent = "결과 확인하기 →";
+                } else {
+                    document.getElementById('victory-next-btn').textContent = "다음 스테이지로 →";
+                }
+
                 setTimeout(() => {
                     if (this.isSolved) {
                         document.getElementById('victory-screen').style.display = 'flex';
