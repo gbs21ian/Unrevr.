@@ -45,7 +45,7 @@
         #hud {
             width: 760px;
             padding: 10px 20px;
-            display: flex;
+            display: none; /* 초기 상태는 숨김 */
             justify-content: space-between;
             align-items: center;
             background: var(--panel-bg);
@@ -792,6 +792,7 @@
                 
                 this.playerName = name.trim() || "익명";
                 document.getElementById('start-screen').style.display = 'none';
+                document.getElementById('hud').style.display = 'flex'; // HUD 표시
                 this.isGameRunning = true;
                 this.gameStartTime = Date.now();
                 this.loadStage(0);
@@ -799,12 +800,14 @@
 
             showRanking() {
                 document.getElementById('start-screen').style.display = 'none';
+                document.getElementById('hud').style.display = 'none'; // HUD 숨김
                 document.getElementById('ranking-screen').style.display = 'flex';
                 this.renderRankings();
             }
 
             showStartScreen() {
                 document.getElementById('start-screen').style.display = 'flex';
+                document.getElementById('hud').style.display = 'none'; // HUD 숨김
                 document.getElementById('ranking-screen').style.display = 'none';
                 document.getElementById('victory-screen').style.display = 'none';
                 this.isGameRunning = false;
